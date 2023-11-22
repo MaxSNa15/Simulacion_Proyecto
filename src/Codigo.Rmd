@@ -1,0 +1,180 @@
+---
+title: "Simulacion"
+author: "J.Musi"
+date: "`r Sys.Date()`"
+output:
+  word_document: default
+  html_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+Un taquero tiene en disponibilidad de 1000 tacos al día y trabaja 22 días al mes. Los clientes llegan de entre 10 a 30 minutos y el taquero puede sacar las ordenes de entre 5 a 10 minutos.
+
+
+```{r}
+# Se variable fija (tacos disponibles)
+tacos <- 1000
+
+# Número de simulaciones por día
+num_simulaciones <- 5
+
+# Vectores para almacenar información de todos los días
+todos_los_tacos_vendidos <- numeric(0)
+todas_las_tasas_llegada <- numeric(0)
+todas_las_tasas_preparacion <- numeric(0)
+
+# Inicializar variables para contar días en diferentes rangos de tacos restantes
+dias_negativos <- 0
+dias_0_a_19 <- 0
+dias_20_a_49 <- 0
+dias_50_a_100 <- 0
+dias_mas_101 <- 0
+```
+
+
+Se simularon los 22 días de los cuales solo trabaja 5 horas al día.
+```{r}
+# Número de días a simular
+num_dias_simulacion <- 22
+
+# Número de simulaciones por día
+num_simulaciones <- 5
+
+# Vectores para almacenar información de todos los días
+todos_los_tacos_vendidos <- numeric(0)
+todas_las_tasas_llegada <- numeric(0)
+todas_las_tasas_preparacion <- numeric(0)
+
+# Contadores de días en diferentes rangos de tacos restantes
+dias_negativos <- 0
+dias_0_a_19 <- 0
+dias_20_a_49 <- 0
+dias_50_a_100 <- 0
+dias_mas_101 <- 0
+
+# El taquero no trabaja los lunes y los martes, o sea que trabaja 22 días al mes
+for (dias in 1:num_dias_simulacion) {
+
+  # Inicializar tacos_pase antes de su primera aparición
+  tacos_pase <- tacos
+
+  # Vectores para almacenar información del día actual
+  tacos_vendidos <- numeric(num_simulaciones)
+  tasa_llegada <- numeric(num_simulaciones)
+  tasa_preparacion <- numeric(num_simulaciones)
+
+  # Inicializar el indicador de tacos negativos
+  tacos_negativos <- FALSE
+
+  for (horas in 1:num_simulaciones) {
+    # Generar números aleatorios para la tasa de llegada y tasa de servicio
+    llegada_random <- runif(1, min = 10, max = 30)
+    orden_random <- runif(1, min = 5, max = 10)
+
+    # Redondear los valores
+    llegada <- round(llegada_random)
+    orden <- round(orden_random)
+
+    # Convertir las tasas de llegada y servicio a eventos por hora
+    lambda_por_hora <- 60 / llegada  # 60 minutos en una hora
+    mu_por_hora <- 60 / orden
+
+    # Inicializar variables
+    tiempo_simulacion <- 60
+    tiempo_actual <- 0
+    cola <- numeric(0)
+    tacos_consumidos <- 0
+
+    # Simulación manual
+    while (tiempo_actual < tiempo_simulacion) {
+      # Generar tiempo hasta la próxima llegada y salida
+      tiempo_llegada <- rexp(1, rate = lambda_por_hora)
+      tiempo_salida <- rexp(1, rate = mu_por_hora)
+
+      # Actualizar el tiempo actual
+      tiempo_actual <- tiempo_actual + min(tiempo_llegada, tiempo_salida)
+
+      if (tiempo_llegada < tiempo_salida) {
+        # Llegada de cliente
+        cola <- c(cola, tiempo_actual)
+      } else {
+        # Salida de cliente
+        if (length(cola) > 0) {
+          cola <- cola[-1]  # Eliminar el cliente que sale de la cola
+          tacos_consumidos <- tacos_consumidos + 1
+        }
+      }
+
+      # Verificar si los tacos restantes son negativos
+      tacos_restantes <- tacos_pase - tacos_consumidos
+      if (tacos_restantes < 0) {
+        tacos_negativos <- TRUE
+        break  # Salir del ciclo si los tacos son negativos
+      }
+    }
+
+    if (tacos_negativos) {
+      # Si los tacos fueron negativos en alguna hora, salir del ciclo diario
+      break
+    }
+
+    # Almacenar información del día actual
+    tacos_vendidos[horas] <- tacos_consumidos
+    tasa_llegada[horas] <- lambda_por_hora
+    tasa_preparacion[horas] <- mu_por_hora
+
+    # Actualizar para la próxima iteración
+    tacos_pase <- tacos_pase - tacos_consumidos
+  }
+
+  # Contar días en diferentes rangos de tacos restantes
+  if (tacos_restantes < 0) {
+    dias_negativos <- dias_negativos + 1
+  } else if (tacos_restantes >= 0 & tacos_restantes <= 19) {
+    dias_0_a_19 <- dias_0_a_19 + 1
+  } else if (tacos_restantes >= 20 & tacos_restantes <= 49) {
+    dias_20_a_49 <- dias_20_a_49 + 1
+  } else if (tacos_restantes >= 50 & tacos_restantes <= 100) {
+    dias_50_a_100 <- dias_50_a_100 + 1
+  } else if (tacos_restantes >= 101) {
+    dias_mas_101 <- dias_mas_101 + 1
+  }
+
+  # Almacenar información del día actual en los vectores generales
+  todos_los_tacos_vendidos <- c(todos_los_tacos_vendidos, tacos_vendidos)
+  todas_las_tasas_llegada <- c(todas_las_tasas_llegada, tasa_llegada)
+  todas_las_tasas_preparacion <- c(todas_las_tasas_preparacion, tasa_preparacion)
+}
+```
+
+
+Con la información recopilada se lograron hacer gráficas para ver los tacos vendidos por hora, la tasa de llegada por hora, la tasa de preparación por hora y días con diferentes rangos de tacos restantes.
+```{r}
+# Gráfica de todos los tacos vendidos por hora
+plot(todos_los_tacos_vendidos, type = "l", col = "blue", lwd = 2,
+     main = "Todos los Tacos Vendidos por Hora",
+     xlab = "Iteración (Hora)", ylab = "Tacos Vendidos")
+
+
+# Gráfica de todas las tasas de llegada por hora
+plot(todas_las_tasas_llegada, type = "l", col = "red", lwd = 2,
+     main = "Tasas de Llegada por Hora",
+     xlab = "Iteración (Hora)", ylab = "Tasa de Llegada")
+
+# Gráfica de todas las tasas de preparación por hora
+plot(todas_las_tasas_preparacion, type = "l", col = "green", lwd = 2,
+     main = "Tasas de Preparación por Hora",
+     xlab = "Iteración (Hora)", ylab = "Tasa de Preparación")
+
+# Crear etiquetas y valores para la gráfica
+categorias <- c("Faltaron tacos", "1-19", "20-49", "50-100", "Más de 101")
+valores <- c(dias_negativos, dias_0_a_19, dias_20_a_49,dias_50_a_100, dias_mas_101)
+
+# Gráfica de días con diferentes rangos de tacos restantes
+barplot(valores, names.arg = categorias, col = "skyblue", main = "Días con Diferentes Rangos de Tacos Restantes", xlab = "Rangos de Tacos Restantes", ylab = "Número de Días")
+
+```
+Con esta información el taquero puede ir recopilando su rendimiento y ajustando su inventario para que el rango de tacos restantes no sea mayor a 50 tacos.
